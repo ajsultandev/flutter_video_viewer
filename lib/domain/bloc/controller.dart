@@ -4,7 +4,7 @@ import 'package:video_player/video_player.dart';
 import 'package:helpers/helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wakelock/wakelock.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:video_viewer/ui/fullscreen.dart';
 import 'package:video_viewer/domain/entities/ads.dart';
@@ -176,21 +176,14 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
     if (mounted) super.notifyListeners();
   }
 
-  Future<void> initialize(
-    Map<String, VideoSource> sources, {
-    bool autoPlay = true,
-  }) async {
+  Future<void> initialize(Map<String, VideoSource> sources, {bool autoPlay = true}) async {
     WidgetsBinding.instance?.addObserver(this);
     final MapEntry<String, VideoSource> entry = sources.entries.first;
     _mounted = true;
     _source = sources;
-    await changeSource(
-      name: entry.key,
-      source: entry.value,
-      autoPlay: autoPlay,
-    );
+    await changeSource(name: entry.key, source: entry.value, autoPlay: autoPlay);
     log("VIDEO VIEWER INITIALIZED");
-    Wakelock.enable();
+    WakelockPlus.enable();
   }
 
   @override
@@ -202,7 +195,7 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
     _video?.removeListener(_videoListener);
     _video?.pause();
     _video?.dispose();
-    Wakelock.disable();
+    WakelockPlus.disable();
     log("VIDEO VIEWER DISPOSED");
     super.dispose();
   }
@@ -242,10 +235,7 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
     if (source.subtitle != null) {
       final subtitle = source.subtitle![source.intialSubtitle];
       if (subtitle != null) {
-        changeSubtitle(
-          subtitle: subtitle,
-          subtitleName: source.intialSubtitle,
-        );
+        changeSubtitle(subtitle: subtitle, subtitleName: source.intialSubtitle);
       }
     }
 
@@ -293,10 +283,7 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  Future<void> changeSubtitle({
-    required VideoViewerSubtitle? subtitle,
-    required String subtitleName,
-  }) async {
+  Future<void> changeSubtitle({required VideoViewerSubtitle? subtitle, required String subtitleName}) async {
     _activeSubtitle = subtitleName;
     _activeSubtitleData = null;
     _subtitle = subtitle;
@@ -398,14 +385,14 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
         } else {
           if (_closeOverlayButtons == null) _startCloseOverlay();
         }
-      } else if (_isGoingToCloseOverlay) cancelCloseOverlay();
+      } else if (_isGoingToCloseOverlay)
+        cancelCloseOverlay();
     }
 
     //Show the current Subtitle
     if (_subtitle != null) {
       if (_activeSubtitleData != null) {
-        if (!(position > _activeSubtitleData!.start &&
-            position < _activeSubtitleData!.end)) _findSubtitle();
+        if (!(position > _activeSubtitleData!.start && position < _activeSubtitleData!.end)) _findSubtitle();
       } else {
         _findSubtitle();
       }
@@ -415,8 +402,7 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
     if (_ads != null) {
       if (_activeAd != null) {
         final Duration start = _getAdStartTime(_activeAd!);
-        if (!(position > start &&
-            position < start + _activeAd!.durationToEnd)) {
+        if (!(position > start && position < start + _activeAd!.durationToEnd)) {
           _findAd();
         }
       } else {
@@ -441,9 +427,7 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
 
     for (VideoViewerAd ad in _ads!) {
       final Duration start = _getAdStartTime(ad);
-      if (position > start &&
-          position < start + ad.durationToEnd &&
-          _activeAd != ad) {
+      if (position > start && position < start + ad.durationToEnd && _activeAd != ad) {
         _activeAd = ad;
         await _video?.pause();
         _ads?.remove(ad);
@@ -498,9 +482,7 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
     final Duration position = _video!.value.position;
     bool foundOne = false;
     for (SubtitleData subtitle in subtitles!) {
-      if (position > subtitle.start &&
-          position < subtitle.end &&
-          _activeSubtitleData != subtitle) {
+      if (position > subtitle.start && position < subtitle.end && _activeSubtitleData != subtitle) {
         _activeSubtitleData = subtitle;
         foundOne = true;
         notifyListeners();
@@ -554,11 +536,7 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
   //-------------//
   void closeAllSecondarySettingsMenus() {
     _isShowingMainSettingsMenu = true;
-    isShowingSecondarySettingsMenus.fillRange(
-      0,
-      isShowingSecondarySettingsMenus.length,
-      false,
-    );
+    isShowingSecondarySettingsMenus.fillRange(0, isShowingSecondarySettingsMenus.length, false);
     notifyListeners();
   }
 
@@ -605,21 +583,21 @@ class VideoViewerController extends ChangeNotifier with WidgetsBindingObserver {
       final VideoQuery query = VideoQuery();
       final metadata = query.videoMetadata(context!);
       final Duration transition = metadata.style.transitions;
-      context?.navigator.push(PageRouteBuilder(
-        opaque: false,
-        fullscreenDialog: true,
-        transitionDuration: transition,
-        reverseTransitionDuration: transition,
-        pageBuilder: (_, __, ___) => MultiProvider(
-          providers: [
-            ChangeNotifierProvider.value(value: query.video(context!)),
-            Provider.value(value: metadata),
-          ],
-          child: FullScreenPage(
-            fixedLandscape: metadata.onFullscreenFixLandscape,
+      context?.navigator.push(
+        PageRouteBuilder(
+          opaque: false,
+          fullscreenDialog: true,
+          transitionDuration: transition,
+          reverseTransitionDuration: transition,
+          pageBuilder: (_, __, ___) => MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(value: query.video(context!)),
+              Provider.value(value: metadata),
+            ],
+            child: FullScreenPage(fixedLandscape: metadata.onFullscreenFixLandscape),
           ),
         ),
-      ));
+      );
     }
   }
 
